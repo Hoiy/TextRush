@@ -13,6 +13,17 @@ class Download(luigi.Task):
     def run(self):
         download(self.src, self.dst)
 
+class DownloadGloVe(luigi.Task):
+    def requires(self):
+        return Download('http://nlp.stanford.edu/data/glove.6B.zip', 'data/glove.6B.zip')
+    
+    def output(self):
+        return luigi.LocalTarget('data/glove.6B.300d.txt')
+    
+    def run(self):
+        unzip = subprocess.Popen(['unzip', '-d', 'data', self.input().path], stdout = subprocess.PIPE)
+        unzip.wait()
+        
 class QuoteCorpus(luigi.Task):
     def requires(self):
         return Download('https://github.com/alvations/Quotables/raw/master/author-quote.txt', 'data/quote.txt')
@@ -60,6 +71,7 @@ class EnWikiCorpus(luigi.Task):
         bunzip = subprocess.Popen(['bunzip2', '-c', self.input().path], stdout = subprocess.PIPE)
         wiki2text = subprocess.Popen([self.wiki2text_exec], stdin = bunzip.stdout, stdout = subprocess.PIPE)
         grep = subprocess.Popen(['grep', '-v', '^='], stdin = wiki2text.stdout, stdout = o)
+        grep.wait()
 
 def preprocess_file(src, dst):
     result = []
@@ -107,3 +119,4 @@ class PrepareTrainingData(luigi.Task):
         yield QuoteTokens()
         yield EnWikiTokens()
         yield Quote2Tokens()
+        yield DownloadGloVe()
